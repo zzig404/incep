@@ -10,5 +10,4 @@ numpy==1.22.3
 pandas
 scikit-image==0.18.3
 scikit-learn
-scikit-learn-intelex==2021.20210714.120553
 opencv-python==4.5.5.64
