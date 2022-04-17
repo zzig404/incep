@@ -1,35 +1,16 @@
+
 import streamlit as st
 import cv2
-import os
-import sys 
+import tensorflow as tf 
 import numpy as np
-import tempfile
-import math
+from keras.models import load_model
 from PIL import Image
-from keras.preprocessing import image
-from skimage.transform import resize
-import tensorflow as tf
-from keras.layers import Dense, Activation, Dropout, Bidirectional
-from keras.layers.recurrent import LSTM
-from keras.models import Sequential
-#from keras.optimizers import SGD
-from keras import backend as K
-from keras.utils import np_utils
-from sklearn.model_selection import train_test_split
-from keras.callbacks import ModelCheckpoint
-from keras.layers import Conv2D, Activation, MaxPooling2D, Dropout, Flatten, Dense,InputLayer
-from keras.utils.vis_utils import plot_model
-from keras.preprocessing.image import img_to_array
-from keras.preprocessing.image import load_img
+import PIL
 from keras.applications.vgg16 import VGG16
-from keras.applications.vgg16 import preprocess_input
-from keras.applications.vgg16 import decode_predictions
 
-
-# Load the model
+#model
+#model= load_model('classify.hdf5',compile=(False))
 model = VGG16(weights='imagenet')
-#model =InceptionV3(include_top=True)
-
 
 PAGE_CONFIG = {"page_title":"StColab.io", "page_icon":":smiley:","layout":"centered"}
 st.set_page_config("Main Menu")
@@ -42,154 +23,68 @@ video_file = open('./uploads/try.mp4', 'rb')
 video_bytes = video_file.read()
 st.video(video_bytes)
 
-page = st.sidebar.selectbox("Choose action", ["Classify", "Upload"]) 
-def main():
-  st.sidebar.title("Dashboard")
 
 
-  if page == "Classify":
-    #Load a video from file
-    video_input_file_path = ('./uploads/try.mp4')
-
-   
-
-    #Output file
-    feature_output_file_path = ('./Frames/')
-
-    # Capturing the video from path
-    video = cv2.VideoCapture(video_input_file_path)
-    frameRate = video.get(5)
-
-    #Creating frames from the given video
-    import math
+#body and functions of the app
+def creating_frames(name):
+    vidcap = cv2.VideoCapture(name)
+    success,frame = vidcap.read()
     count = 0
-    while(video.isOpened()):
-        frameNum = video.get(1)
-        ret, frame = video.read()
-        if (ret != True):
+    frame_skip =1
+    while success:
+        success, frame = vidcap.read() # get next frame
+        cv2.imwrite(r"./frame%d.jpg" % count, frame) 
+        if count % frame_skip == 0: # analyse frames
+            print('frame: {}'.format(count)) 
+            pil_img = Image.fromarray(frame) # convert frames
+            
+        if count > 20 :
             break
-        if (frameNum % math.floor(frameRate) == 0):
-            frameName = feature_output_file_path + "frame%d.jpg" % count;count+=1
-            cv2.imwrite(frameName, frame)
-    video.release()
-    st.text("Frame Capturing complete!")
+        count += 1
+    converting_vidd()
 
-    frames = './Frames/*.jpg'
-
-    # Converting the images to arrays
-    images = []
-    import glob
-    for filename in glob.glob(frames): 
-      frame = image.load_img(filename, target_size=(224,224,224)) 
-      images.append(frame)
-
+def converting_vidd():
+    idx = tf.io.read_file('frame2.jpg')
+    idx = tf.io.decode_image(idx,channels=3) 
+    idx = tf.image.resize(idx,[299,299])
+    idx = tf.expand_dims(idx, axis=0)
+    idx = tf.keras.applications.inception_v3.preprocess_input(idx)
+    return idx
     
-    for frame in images:
-      frame_arr = image.img_to_array(frame)
+def predict(idx):
+    mod_pred = tf.keras.applications.inception_v3.decode_predictions(model.predict(idx), top=1)
+    return mod_pred
     
-    #frame_arr.shape
-    frame_arr = np.expand_dims(frame_arr, axis = 0)
+def main():
+    st.sidebar.title("OBJECT Detection.")
+    st.title("Object Detection Using Inception V3")
+    vid = None
 
-    # prepare the image for the VGG model
-    img = preprocess_input(frame_arr)
+    Search = st.sidebar.text_input("Search for an object",)
+    uploaded_video = st.sidebar.file_uploader("Choose Video",type=(['avi','mp4','mov','mkv']))
+    if uploaded_video is not None: 
+        vid = uploaded_video.name
+        with open(vid, mode='wb') as f:
+            f.write(uploaded_video.read()) 
 
-    # predict the probability across all output classes
-    yhat = model.predict(img)
+        st.sidebar.markdown(f"""
+        ### Files
+        - {vid}
+        """,
+        unsafe_allow_html=True) # display file name
 
-    # convert the probabilities to class labels
-    from keras.applications.vgg16 import decode_predictions
-    label = decode_predictions(yhat)
+        vidcap = cv2.VideoCapture(vid) # load video from disk
+        cur_frame = 0
+        success = True
+        
+    if st.sidebar.button("RECOGNISE"):
+        convert_frames = creating_frames(vid)
+        output = converting_vidd()
+        results_final = predict(output)
+    
+        #st.success('The Output is {}'.format(output))
+        st.success(results_final)
 
-    # retrieve the most likely result, e.g. highest probability
-    label = label[0][0]
-
-
-    # print the classification
-    with st.container():
-      col1, col2 = st.columns([5,5])
-      with col1:
-        st.text("Object with highest classfication")
-        st.write('%s (%.2f%%)' % (label[1], label[2]*100))
-      with col2:
-        st.image(yhat)
-
-  ########################################################
-  if page == "Upload":
-    # If the user decides to upload own video
-    st.text("Upload to search for objects in the video")
-    def uploadFile():
-      vid_file = st.file_uploader("Upload a video", type=["2mb only","mp4", "mov","avi"])
-      tempVideo = tempfile.NamedTemporaryFile(delete=False) 
-      if vid_file is not None: 
-        tempVideo.write(vid_file.read())
-      return tempVideo.name
-    # Capturing video frames 
-    def splitVideo(videoPath):
-      import math
-      count = 0
-      cap = cv2.VideoCapture(videoPath)
-      frameRate = cap.get(5) 
-      tempImage = tempfile.NamedTemporaryFile(delete=False) 
-      x=1
-      # Splitting video frames into photos
-      while(cap.isOpened()):
-        frameId = cap.get(1) 
-        ret, frame = cap.read()
-        if (ret != True):
-          break
-        if (frameId % math.floor(frameRate) == 0):
-          tempImage = videoPath.split('.')[0] +"_frame%d.jpg" % count;count+=1
-          cv2.imwrite(tempImage, frame)
-          frames.append(tempImage)
-      cap.release() 
-      return frames,count
-    # Classifying the objects
-    def classifyObjects():  
-      model = VGG16()
-      from keras.applications.vgg16 import decode_predictions
-      classify = []
-      frames,count = splitVideo(videoFile)
-
-      for i in range(count):    
-        image = load_img(frames[i], target_size=(224, 224)) 
-        image = img_to_array(image)
-        image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
-        # prepare the image for the VGG model
-        image = preprocess_input(image)
-        # predict the probability across all output classes   
-        img_pred = model.predict(image)
-        # convert the probabilities to class labels
-        label = decode_predictions(img_pred)    
-        label = label[0][0]
-        result =  label[1]
-        classify.append(result)
-      return classify
-
-    def searchInFrames(object_):
-      indeces = []
-      classifications = classifyObjects()
-      if object_ in classifications:
-        for i in range(len(classifications)):
-          if classifications[i] == object_:
-            index = classifications.index(object_)
-            indeces.append(index)
-            filePath = frames[index]
-            img = load_img(filePath, target_size = (224, 224))
-            detected_paths.append(filePath)
-        for i in range(len(indeces)):
-          st.image(frames[i], width=224)
-      else:
-        st.write("Object not available in video!")
-
-    videoFile = uploadFile()
-    user_input = st.text_input("Enter object to search: ")
-
-    if st.button('Search'):  
-      frames =[]
-      detected_paths = []
-      searchInFrames(user_input)
-      st.write("")
-
-
-if __name__ == '__main__':
-  main()
+        
+if __name__=='__main__':
+    main()
