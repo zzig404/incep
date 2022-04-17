@@ -8,9 +8,12 @@ from PIL import Image
 import PIL
 from keras.applications.vgg16 import VGG16
 
+from keras.applications.inception_v3 import InceptionV3
+model =InceptionV3(include_top=True)
+
 #model
 #model= load_model('classify.hdf5',compile=(False))
-model = VGG16(weights='imagenet')
+#model = VGG16(weights='imagenet')
 
 PAGE_CONFIG = {"page_title":"StColab.io", "page_icon":":smiley:","layout":"centered"}
 st.set_page_config("Main Menu")
