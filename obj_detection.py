@@ -49,7 +49,7 @@ def creating_frames(name):
 def converting_vidd():
     idx = tf.io.read_file('frame2.jpg')
     idx = tf.io.decode_image(idx,channels=3) 
-    idx = tf.image.resize(idx,[224,224])
+    idx = tf.image.resize(idx,[229,229])
     idx = tf.expand_dims(idx, axis=0)
     idx = tf.keras.applications.inception_v3.preprocess_input(idx)
     return idx
