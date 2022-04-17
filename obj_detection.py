@@ -6,7 +6,6 @@ import numpy as np
 import tempfile
 import math
 from PIL import Image
-import matplotlib.pyplot as plt
 from keras.preprocessing import image
 from skimage.transform import resize
 import tensorflow as tf
