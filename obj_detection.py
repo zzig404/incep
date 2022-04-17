@@ -77,7 +77,7 @@ def main():
         cur_frame = 0
         success = True
         
-    if st.sidebar.button("RECOGNISE"):
+    if st.sidebar.button("Detect Objects"):
         convert_frames = creating_frames(vid)
         output = converting_vidd()
         results_final = predict(output)
