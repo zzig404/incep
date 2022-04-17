@@ -19,7 +19,7 @@ st.title("Object Detection with InceptionV3")
 st.text("Choose UPLOAD on the dropdown menu to upload your own video and search for objects")
 
 # Play video whilist the predictions are loading
-video_file = open('./uploads/try.mp4', 'rb')
+video_file = open('./uploads/mosquito_net.mp4', 'rb')
 video_bytes = video_file.read()
 st.video(video_bytes)
 
